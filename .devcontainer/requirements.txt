@@ -13,3 +13,9 @@ python-dotenv
 # Type checking (optional but useful)
 mypy
 django-stubs
+
+# API
+djangorestframework
+django-cors-headers
+drf_yasg
+coreapi
