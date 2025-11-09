@@ -1,0 +1,23 @@
+// For format details, see https://aka.ms/devcontainer.json
+{
+  "name": "WebDev",
+  "image": "mcr.microsoft.com/devcontainers/universal",
+
+  // VS Code Extensions to install automatically
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "workbench.colorTheme": "Visual Studio Dark"
+      },
+      "extensions": [
+        "Google.geminicodeassist"
+      ]
+    }
+  },
+
+  // Port forwarding for Django (typically port 8000)
+  "forwardPorts": [8000],
+
+  // Install dependencies from requirements.txt if it exists in root or .devcontainer/
+  "postCreateCommand": "pip install --user -r $( [ -f requirements.txt ] && echo requirements.txt || echo .devcontainer/requirements.txt )"
+}

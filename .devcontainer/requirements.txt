@@ -1,0 +1,15 @@
+# Core framework
+django>=4.2,<5.0
+
+# SQLite support is built-in to Python, no extra packages needed
+
+# Dev tools (optional but highly recommended)
+black
+flake8
+isort
+django-debug-toolbar
+python-dotenv
+
+# Type checking (optional but useful)
+mypy
+django-stubs
