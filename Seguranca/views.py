@@ -1,14 +1,9 @@
-from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
-from django.contrib.auth.views import LoginView, LogoutView
-from django.http import HttpResponseRedirect
-from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import PasswordChangeView, PasswordChangeDoneView, PasswordResetCompleteView
-
-from .forms import SignUpForm
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.models import User, Group
 
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -86,68 +81,87 @@ class CustomAuthToken(ObtainAuthToken):
             {'username': 'visitante'},
             status=status.HTTP_404_NOT_FOUND)
                         
-def signup(request):
-    """
-    Handles user registration.
+class UserRegistrationView(APIView):
+    @swagger_auto_schema(
+        operation_summary='Register a new user',
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING),
+                'password': openapi.Schema(type=openapi.TYPE_STRING),
+                'email': openapi.Schema(type=openapi.TYPE_STRING),
+                'group': openapi.Schema(type=openapi.TYPE_STRING, description="User group ('reviewer' or 'developer')"),
+            },
+            required=['username', 'password', 'email', 'group'],
+        ),
+    )
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
+        group_name = request.data.get('group')
 
-    Allows a new user to register and assigns them to a specific group (GameDev or Reviewers).
-    """
-    if request.method == 'POST':
-        form = SignUpForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            group = form.cleaned_data.get('group')
+        if not all([username, password, email, group_name]):
+            return Response(
+                {'error': 'Please provide username, password, email, and group'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if group_name not in ['reviewer', 'developer']:
+            return Response({'error': "Group must be 'reviewer' or 'developer'"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {'error': 'Username already exists'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = User.objects.create_user(
+            username=username, 
+            password=password, 
+            email=email
+        )
+
+        try:
+            group = Group.objects.get(name=group_name)
             user.groups.add(group)
-            return HttpResponseRedirect(reverse_lazy('home-page'))
-    else:
-        form = SignUpForm()
-    return render(request, 'Seguranca/signup.html', {'form': form})
+        except Group.DoesNotExist:
+            # This case assumes the groups 'reviewer' and 'developer' exist.
+            # You should create them in the Django admin panel.
+            return Response({'error': f"Group '{group_name}' does not exist."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class login_view(LoginView):
+        token, _ = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'token': token.key
+        }, status=status.HTTP_201_CREATED)
+
+class LogoutView(APIView):
     """
-    Handles user login.
-
-    Uses Django's built-in LoginView for authentication.
+    Logs out the user by deleting their authentication token.
     """
-    template_name = 'Seguranca/login.html'
-    redirect_authenticated_user = True
+    permission_classes = [IsAuthenticated]
 
-@login_required
-def logout_view(request):
-    """
-    Displays a confirmation page before logging out.
-    """
-    return render(request, 'Seguranca/logout.html')
-
-class actual_logout_view(LogoutView):
-    """
-    Handles the actual user logout.
-
-    Redirects the user to the home page after logging out.
-    """
-    def get_success_url(self):
-        """
-        Specifies the URL to redirect to after a successful logout.
-        """
-        return reverse_lazy('home-page')
-
-class ChangePasswordView(PasswordChangeView):
-    '''
-    View for changing the user's password.
-    '''
-    template_name = 'Seguranca/change_password.html'
-    success_url = reverse_lazy('password_change_done')
-
-class PasswordChangeDoneView(PasswordChangeDoneView):
-    '''
-    View displayed after a successful password change.
-    '''
-    template_name = 'Seguranca/password_change_done.html'
-    success_url = reverse_lazy('home-page')
-
-class PasswordResetComplete(PasswordResetCompleteView):
-    '''
-    View displayed after a successful password reset.
-    '''
-    template_name = 'Seguranca/password_reset_complete.html'
-    success_url = reverse_lazy('home-page')
+    @swagger_auto_schema(
+        operation_summary='User logout',
+        operation_description="Invalidates the user's authentication token and logs them out of the session.",
+        security=[{'Token':[]}],
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER,
+                description='Authentication token in the format "Token <token_value>"',
+                type=openapi.TYPE_STRING, required=True
+            ),
+        ],
+        responses={
+            status.HTTP_200_OK: 'Logout successful.',
+            status.HTTP_401_UNAUTHORIZED: 'Unauthorized.',
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        request.user.auth_token.delete()
+        logout(request)
+        return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)

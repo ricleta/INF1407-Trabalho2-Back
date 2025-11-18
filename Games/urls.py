@@ -8,4 +8,5 @@ urlpatterns = [
     path('', views.GamesView.as_view(), name='game-list-create'),
     path('<int:id_arg>/', views.GamesView.as_view(), name='game-update'),
     path('', views.GamesView.as_view(), name='game-delete'),
+    path('mygames/', views.MyGamesView.as_view(), name='mygames'),
 ]

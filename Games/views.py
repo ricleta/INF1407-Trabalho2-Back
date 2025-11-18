@@ -1,17 +1,8 @@
-#from django.shortcuts import render
-#from django.views.generic import ListView, CreateView
-#from django.views.generic.edit import UpdateView, DeleteView
-#from django.views.generic.detail import DetailView
-#from django.urls import reverse_lazy, reverse
-#from django.contrib import messages
-#from django.contrib.auth.mixins import LoginRequiredMixin
-#from django.http import HttpResponseRedirect
-#from .models import GamesModel
-#from .forms import GamesForm
-
 from .models import GamesModel
 
 # Autenticação
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from .serializers import GamesModelSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -22,49 +13,106 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 class GamesView(APIView):
-    def get(self, request, id_arg):
-        queryset = self.singleGame(id_arg)
-        if queryset:
-            serializer = GamesModelSerializer(queryset)
-            return Response(serializer.data)
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    @swagger_auto_schema(
+        operation_summary="Busca todos os jogos ou um jogo específico",
+        responses={
+            200: GamesModelSerializer(many=True),
+            404: "Game not found"
+        }
+    )
+    def get(self, request, id_arg=None):
+        if id_arg:
+            # Get a single game by ID
+            try:
+                queryset = GamesModel.objects.get(id=id_arg)
+                serializer = GamesModelSerializer(queryset)
+                return Response(serializer.data)
+            except GamesModel.DoesNotExist:
+                return Response({'msg': f'Game with id #{id_arg} does not exist'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            return Response({'msg': f'Games com id #{id_arg} não existe'}, status.HTTP_400_BAD_REQUEST)
-    
+            # Get all games
+            queryset = GamesModel.objects.all()
+            serializer = GamesModelSerializer(queryset, many=True)
+            return Response(serializer.data)
+
     def singleGame(self, id_arg):
         try:
             queryset = GamesModel.objects.get(id=id_arg)
             return queryset
         except GamesModel.DoesNotExist:
             return None
-    
+
+    @swagger_auto_schema(
+        operation_summary="Cria um novo jogo",
+        request_body=GamesModelSerializer,
+        security=[{'Token': []}],
+        responses={
+            201: GamesModelSerializer(),
+            400: "Bad Request"
+        })
     def post(self, request):
         serializer = GamesModelSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status.HTTP_201_CREATED)
+            # Assuming the developer is the authenticated user
+            serializer.save(developer=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
-    
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_summary="Atualiza um jogo existente",
+        request_body=GamesModelSerializer,
+        security=[{'Token': []}],
+        responses={
+            200: GamesModelSerializer(),
+            400: "Bad Request",
+            404: "Not Found"
+        })
     def put(self, request, id_arg):
         game = self.singleGame(id_arg)
+        if not game:
+            return Response({'error': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
         serializer = GamesModelSerializer(game, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request):
-        id_erro = ""
-        erro = False
-        for id in request.data:
-            jogo = GamesModel.objects.get(id=id)
-        if jogo:
-            jogo.delete()
-        else:
-            id_erro += str(id)
-            erro = True
-        if erro:
-            return Response({'error': f'item [{id_erro}] não encontrado'}, status.HTTP_404_NOT_FOUND)
-        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_summary="Deleta um jogo",
+        security=[{'Token': []}],
+        responses={
+            204: "No Content",
+            404: "Not Found"
+        })
+    def delete(self, request, id_arg):
+        game = self.singleGame(id_arg)
+        if game:
+            game.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({'error': f'item [{id_arg}] não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+class MyGamesView(APIView):
+    """
+    View to list games created by the currently authenticated user.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Busca os jogos do usuário autenticado",
+        security=[{'Token': []}],
+        responses={
+            200: GamesModelSerializer(many=True),
+            401: "Unauthorized"
+        }
+    )
+    def get(self, request):
+        queryset = GamesModel.objects.filter(developer=request.user)
+        serializer = GamesModelSerializer(queryset, many=True)
+        return Response(serializer.data)

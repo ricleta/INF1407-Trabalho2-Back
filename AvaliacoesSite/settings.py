@@ -29,6 +29,8 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://localhost:8000',
     'http://localhost:8000',
+    'https://obscure-system-9j5g7w64xvq37vw6-3002.app.github.dev',
+    'https://organic-space-invention-4wvpj6q95q7hqwgw-8000.app.github.dev',
 ]
 
 # Application definition
@@ -132,9 +134,9 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = 'Seguranca:login'
-LOGIN_REDIRECT_URL = 'home-page' # Where to go after successful login
-LOGOUT_REDIRECT_URL = 'home-page' # Where to go after logout
+# LOGIN_URL = 'Seguranca:login'
+# LOGIN_REDIRECT_URL = 'home-page' # Where to go after successful login
+# LOGOUT_REDIRECT_URL = 'home-page' # Where to go after logout
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
@@ -149,3 +151,4 @@ REST_FRAMEWORK = {
 # CORS settings (for development)
 # TODO: Restrict this in production
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
