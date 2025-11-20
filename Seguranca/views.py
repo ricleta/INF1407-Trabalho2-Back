@@ -56,13 +56,27 @@ class CustomAuthToken(ObtainAuthToken):
         ],
         responses={
             200: openapi.Response(
-                description='Nome do usuário',
+                description='User data',
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
-                    properties={'username': openapi.Schema(type=openapi.TYPE_STRING)},
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'username': openapi.Schema(type=openapi.TYPE_STRING),
+                        'groups': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'name': openapi.Schema(type=openapi.TYPE_STRING)
+                                }
+                            )
+                        )
+                    },
                 ),
-            )
-        }
+            ),
+            status.HTTP_404_NOT_FOUND: "User not found or not authenticated. Returns 'visitante'."
+        },
+
     )
     def get(self, request):
         '''
@@ -73,9 +87,14 @@ class CustomAuthToken(ObtainAuthToken):
             token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] # token
             token_obj = Token.objects.get(key=token)
             user = token_obj.user
-            return Response(
-            {'username': user.username},
-            status=status.HTTP_200_OK)
+
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'groups': list(user.groups.values('name')) # Fetches group names
+            }
+
+            return Response(user_data, status=status.HTTP_200_OK)
         except (Token.DoesNotExist, AttributeError):
             return Response(
             {'username': 'visitante'},
