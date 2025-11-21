@@ -16,6 +16,13 @@ class GamesView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def singleGame(self, id_arg):
+        try:
+            queryset = GamesModel.objects.get(id=id_arg)
+            return queryset
+        except GamesModel.DoesNotExist:
+            return None
+
     @swagger_auto_schema(
         operation_summary="Busca todos os jogos ou um jogo específico",
         responses={
@@ -37,13 +44,6 @@ class GamesView(APIView):
             queryset = GamesModel.objects.all()
             serializer = GamesModelSerializer(queryset, many=True)
             return Response(serializer.data)
-
-    def singleGame(self, id_arg):
-        try:
-            queryset = GamesModel.objects.get(id=id_arg)
-            return queryset
-        except GamesModel.DoesNotExist:
-            return None
 
     @swagger_auto_schema(
         operation_summary="Cria um novo jogo",
