@@ -52,7 +52,7 @@ class CustomAuthToken(ObtainAuthToken):
                 'Authorization',
                 openapi.IN_HEADER,
                 type=openapi.TYPE_STRING,
-                description='Token de autenticação no formato "token \<<i>valor do token</i>\>"',
+                description='Token de autenticação no formato "token valor do token"',
                 default='token ',
             ),
         ],
