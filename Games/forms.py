@@ -4,7 +4,7 @@ from .models import GamesModel
 class GamesForm(forms.ModelForm):
     """
     Form for creating and updating Games instances.
-
+    
     This form defines the fields and validation rules for the Games model.
     """
 
@@ -23,6 +23,11 @@ class GamesForm(forms.ModelForm):
     )
 
     class Meta:
+        '''
+        Meta class for GamesForm.
+
+        Specifies the model, fields, and custom error messages.
+        '''
         model = GamesModel
         fields = ['title', 'platforms', 'description', 'release_date']
         error_messages = {

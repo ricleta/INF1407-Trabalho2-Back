@@ -15,6 +15,9 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 class CustomAuthToken(ObtainAuthToken):
+    '''
+    View to handle user authentication and token retrieval.
+    '''
     @swagger_auto_schema(
         operation_summary='Obter o token de autenticação',
         operation_description='Retorna o token em caso de sucesso na autenticação ou HTTP 401',
@@ -32,6 +35,11 @@ class CustomAuthToken(ObtainAuthToken):
         },
     )
     def post(self, request, *args, **kwargs):
+        '''
+        Handles POST requests to authenticate a user and return a token.
+        Parâmetros: username e password
+        Retorna: o token de autenticação
+        '''
         serializer = self.serializer_class(data=request.data, context={'request': request})
         if serializer.is_valid():
             username = serializer.validated_data['username']
@@ -82,6 +90,7 @@ class CustomAuthToken(ObtainAuthToken):
     )
     def get(self, request):
         '''
+        Handles GET requests to retrieve the authenticated user's information.
         Parâmetros: o token de acesso
         Retorna: o username ou 'visitante'
         '''
@@ -103,6 +112,11 @@ class CustomAuthToken(ObtainAuthToken):
             status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request):
+        '''
+        Handles PUT requests to change the user's password.
+        Parâmetros: old_password, new_password1, new_password2
+        Retorna: novo token de autenticação
+        '''
         try:
             token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] # token
             token_obj = Token.objects.get(key=token)
@@ -132,6 +146,10 @@ class CustomAuthToken(ObtainAuthToken):
             return Response({'error': 'Invalid or missing token'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class UserRegistrationView(APIView):
+    '''
+    Registers a new user and assigns them to a group.
+    '''
+
     @swagger_auto_schema(
         operation_summary='Register a new user',
         request_body=openapi.Schema(
@@ -146,6 +164,11 @@ class UserRegistrationView(APIView):
         ),
     )
     def post(self, request):
+        '''
+        Handles POST requests to register a new user.
+        Parâmetros: username, password, email, group
+        Retorna: user_id, username, email, token
+        '''
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email')
@@ -212,11 +235,19 @@ class LogoutView(APIView):
         },
     )
     def post(self, request, *args, **kwargs):
+        '''
+        Handles POST requests to log out the user.
+        Parâmetros: o token de autenticação
+        Retorna: mensagem de sucesso
+        '''
         request.user.auth_token.delete()
         logout(request)
         return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
 
 class ForgotPasswordView(APIView):
+    '''
+    Handles password reset requests by generating a temporary password and emailing it to the user.
+    '''
     @swagger_auto_schema(
         operation_summary='Reset user password',
         operation_description="Generates a temporary password for a user based on their email and returns it.",
@@ -236,6 +267,11 @@ class ForgotPasswordView(APIView):
         },
     )
     def post(self, request):
+        '''
+        Handles POST requests to reset a user's password.
+        Parâmetros: email
+        Retorna: mensagem de sucesso
+        '''
         email = request.data.get('email')
         if not email:
             return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)

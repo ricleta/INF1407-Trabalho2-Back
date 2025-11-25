@@ -14,7 +14,13 @@ class ReviewModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text='Data de criação')
 
     class Meta:
+        '''
+        Specifies unique constraints.
+        '''
         unique_together = [['user', 'game']]
 
     def __str__(self):
+        '''
+        String representation of the ReviewModel instance.
+        '''
         return f"{self.game.title} ({self.rating}) - {self.user.username}"

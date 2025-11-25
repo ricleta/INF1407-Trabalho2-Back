@@ -13,6 +13,9 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 class ReviewView(APIView):
+    '''
+    View to handle CRUD operations for ReviewModel.
+    '''
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -29,6 +32,9 @@ class ReviewView(APIView):
         }
     )
     def get(self, request, id_arg=None):
+        '''
+        Handles GET requests to retrieve reviews.
+        '''
         if id_arg:
             # Busca uma review específica pelo ID na URL
             queryset = self.singleReview(id_arg)
@@ -57,6 +63,9 @@ class ReviewView(APIView):
             return Response(serializer.data)
 
     def singleReview(self, id_arg):
+        '''
+        Helper method to get a single review by ID.
+        '''
         try:
             queryset = ReviewModel.objects.get(id=id_arg)
             return queryset
@@ -71,6 +80,9 @@ class ReviewView(APIView):
             400: "Bad Request"
         })
     def post(self, request):
+        '''
+        Handles POST requests to create a new review.
+        '''
         serializer = ReviewModelSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(user=request.user)
@@ -87,6 +99,9 @@ class ReviewView(APIView):
             404: "Not Found"
         })
     def put(self, request, id_arg):
+        '''
+        Handles PUT requests to update an existing review.
+        '''
         review = self.singleReview(id_arg)
         serializer = ReviewModelSerializer(review, data=request.data)
         if serializer.is_valid():
@@ -103,6 +118,9 @@ class ReviewView(APIView):
             404: "Review [id] não encontrado"
         })
     def delete(self, request, id_arg):
+        '''
+        Handles DELETE requests to remove a review.
+        '''
         review = self.singleReview(id_arg)
         if review:
             review.delete()
