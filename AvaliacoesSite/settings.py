@@ -139,6 +139,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # LOGOUT_REDIRECT_URL = 'home-page' # Where to go after logout
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-username-or-api-key'
+EMAIL_HOST_PASSWORD = 'AH5Vyjt0SQG16Z7M'
+DEFAULT_FROM_EMAIL = 'avaliacoes_site@noreply.com'  
 
 # Django REST Framework settings
 REST_FRAMEWORK = {

@@ -1,5 +1,7 @@
 from django.contrib.auth import login, logout, authenticate
+from django.core.mail import send_mail
 from django.contrib.auth.models import User, Group
+from django.conf import settings
 
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
@@ -213,3 +215,49 @@ class LogoutView(APIView):
         request.user.auth_token.delete()
         logout(request)
         return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+
+class ForgotPasswordView(APIView):
+    @swagger_auto_schema(
+        operation_summary='Reset user password',
+        operation_description="Generates a temporary password for a user based on their email and returns it.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description="The user's email address."),
+            },
+            required=['email'],
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description='Temporary password generated successfully.',
+            ),
+            status.HTTP_400_BAD_REQUEST: 'Email not provided.',
+            status.HTTP_404_NOT_FOUND: 'User with the given email not found.',
+        },
+    )
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        temporary_password = User.objects.make_random_password(length=10)
+        user.set_password(temporary_password)
+        user.save()
+
+        # Send email with the temporary password
+        subject = 'Your New Temporary Password'
+        message = f'Your temporary password is: {temporary_password}'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [user.email]
+
+        send_mail(subject, message, from_email, recipient_list)
+
+        return Response(
+            {'message': 'A temporary password has been sent to your email address.'},
+            status=status.HTTP_200_OK
+        )
