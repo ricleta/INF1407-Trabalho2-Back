@@ -99,7 +99,36 @@ class CustomAuthToken(ObtainAuthToken):
             return Response(
             {'username': 'visitante'},
             status=status.HTTP_404_NOT_FOUND)
-                        
+
+    def put(self, request):
+        try:
+            token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] # token
+            token_obj = Token.objects.get(key=token)
+            user = token_obj.user
+            oldPassword = request.data.get('old_password')
+            newPassword = request.data.get('new_password1')
+            confirmPassword = request.data.get('new_password2')
+          
+            if newPassword != confirmPassword:
+                return Response({'error': 'New passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+          
+            # Verificar se a senha atual está correta
+            if user.check_password(oldPassword):
+                # Alterar a senha e atualizar o token
+                user.set_password(newPassword)
+                user.save()
+                # Atualizar token
+                token, _ = Token.objects.get_or_create(user=user)
+                token.delete()
+                token, _ = Token.objects.get_or_create(user=user)
+                return Response({'token': token.key, "message": "Senha alterada com sucesso."},
+                                status=status.HTTP_200_OK)
+            else:
+                return Response({"old_password": ["Senha atual incorreta."]}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except (Token.DoesNotExist, AttributeError, IndexError):
+            return Response({'error': 'Invalid or missing token'}, status=status.HTTP_401_UNAUTHORIZED)
+
 class UserRegistrationView(APIView):
     @swagger_auto_schema(
         operation_summary='Register a new user',
