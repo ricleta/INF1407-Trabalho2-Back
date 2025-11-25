@@ -143,7 +143,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp-relay.brevo.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your-username-or-api-key'
+EMAIL_HOST_USER = '9c7bd4001@smtp-brevo.com'
 EMAIL_HOST_PASSWORD = 'AH5Vyjt0SQG16Z7M'
 DEFAULT_FROM_EMAIL = 'avaliacoes_site@noreply.com'  
 
