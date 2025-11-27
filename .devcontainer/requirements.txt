@@ -1,5 +1,6 @@
 # Core framework
 django>=4.2,<5.0
+setuptools<81
 
 # SQLite support is built-in to Python, no extra packages needed
 

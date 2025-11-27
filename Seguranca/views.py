@@ -1,11 +1,13 @@
 from django.contrib.auth import login, logout, authenticate
-from django.core.mail import send_mail
+from rest_framework.authentication import TokenAuthentication
+# from django.core.mail import send_mail
 from django.contrib.auth.models import User, Group
-from django.conf import settings
+# from django.conf import settings
+
 
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,10 +16,23 @@ from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+from .models import PasswordResetRequest
+
 class CustomAuthToken(ObtainAuthToken):
     '''
     View to handle user authentication and token retrieval.
     '''
+    authentication_classes = [TokenAuthentication]
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.request.method == 'POST':
+            # Allow any user (authenticated or not) to attempt to log in.
+            return [AllowAny()]
+        # For all other methods (GET, PUT), require the user to be authenticated.
+        return [IsAuthenticated()]
     @swagger_auto_schema(
         operation_summary='Obter o token de autenticação',
         operation_description='Retorna o token em caso de sucesso na autenticação ou HTTP 401',
@@ -40,16 +55,39 @@ class CustomAuthToken(ObtainAuthToken):
         Parâmetros: username e password
         Retorna: o token de autenticação
         '''
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        # 1. First, check for a valid temporary password
+        try:
+            user = User.objects.get(username=username)
+            reset_request = PasswordResetRequest.objects.get(user=user)
+
+            if reset_request.check_temporary_password(password):
+                # Issue a temporary token for password change
+                token, _ = Token.objects.get_or_create(user=user)
+                return Response({
+                    'token': token.key,
+                    'temporary_login': True, 
+                    'message': 'Please reset your password.'
+                }, status=status.HTTP_200_OK)
+            # If the temporary password is just expired, we can clean it up.
+            elif reset_request.is_expired():
+                reset_request.delete()
+
+        except (User.DoesNotExist, PasswordResetRequest.DoesNotExist):
+            # If no user or reset request exists, proceed to standard authentication.
+            pass
+
+        # 2. If not a temporary password, proceed with standard authentication
         serializer = self.serializer_class(data=request.data, context={'request': request})
         if serializer.is_valid():
-            username = serializer.validated_data['username']
-            password = serializer.validated_data['password']
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                token, _ = Token.objects.get_or_create(user=user)
-                login(request, user)
-                return Response({'token': token.key})
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+            user = serializer.validated_data['user']
+            token, _ = Token.objects.get_or_create(user=user)
+            login(request, user)
+            return Response({'token': token.key})
+
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
     @swagger_auto_schema(
         operation_summary='Obtém o username do usuário',
@@ -94,22 +132,13 @@ class CustomAuthToken(ObtainAuthToken):
         Parâmetros: o token de acesso
         Retorna: o username ou 'visitante'
         '''
-        try:
-            token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] # token
-            token_obj = Token.objects.get(key=token)
-            user = token_obj.user
-
-            user_data = {
-                'id': user.id,
-                'username': user.username,
-                'groups': list(user.groups.values('name')) # Fetches group names
-            }
-
-            return Response(user_data, status=status.HTTP_200_OK)
-        except (Token.DoesNotExist, AttributeError):
-            return Response(
-            {'username': 'visitante'},
-            status=status.HTTP_404_NOT_FOUND)
+        user = request.user
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'groups': list(user.groups.values('name')) # Fetches group names
+        }
+        return Response(user_data, status=status.HTTP_200_OK)
 
     def put(self, request):
         '''
@@ -118,31 +147,44 @@ class CustomAuthToken(ObtainAuthToken):
         Retorna: novo token de autenticação
         '''
         try:
-            token = request.META.get('HTTP_AUTHORIZATION').split(' ')[1] # token
-            token_obj = Token.objects.get(key=token)
-            user = token_obj.user
+            user = request.user
             oldPassword = request.data.get('old_password')
             newPassword = request.data.get('new_password1')
             confirmPassword = request.data.get('new_password2')
-          
+
             if newPassword != confirmPassword:
                 return Response({'error': 'New passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
-          
-            # Verificar se a senha atual está correta
-            if user.check_password(oldPassword):
-                # Alterar a senha e atualizar o token
-                user.set_password(newPassword)
-                user.save()
-                # Atualizar token
-                token, _ = Token.objects.get_or_create(user=user)
-                token.delete()
-                token, _ = Token.objects.get_or_create(user=user)
-                return Response({'token': token.key, "message": "Senha alterada com sucesso."},
-                                status=status.HTTP_200_OK)
-            else:
-                return Response({"old_password": ["Senha atual incorreta."]}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if it is a temporary password reset
+            try:
+                reset_request = PasswordResetRequest.objects.get(user=user)
+
+                if reset_request.check_temporary_password(oldPassword):
+                    # If temporary password is used, invalidate temporary password after use
+                    reset_request.delete()
+                elif not user.check_password(oldPassword):
+                    return Response({"error": ["Senha atual incorreta."]}, status=status.HTTP_400_BAD_REQUEST)
+
+            except PasswordResetRequest.DoesNotExist:
+                # Standard password change, check current password
+                if not user.check_password(oldPassword):
+                    return Response({"error": ["Senha atual incorreta."]}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Change password
+            user.set_password(newPassword)
+            user.save()
+
+            # Re-authenticate the user with the new password to update the session
+            login(request, user)
+
+            # Re-issue token
+            request.auth.delete() # Delete the old token
+            token, _ = Token.objects.get_or_create(user=user)
+
+            return Response({'token': token.key, "message": "Senha alterada com sucesso."},
+                            status=status.HTTP_200_OK)
             
-        except (Token.DoesNotExist, AttributeError, IndexError):
+        except AttributeError:
             return Response({'error': 'Invalid or missing token'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class UserRegistrationView(APIView):
@@ -201,7 +243,7 @@ class UserRegistrationView(APIView):
         except Group.DoesNotExist:
             # This case assumes the groups 'reviewer' and 'developer' exist.
             # You should create them in the Django admin panel.
-            return Response({'error': f"Group '{group_name}' does not exist."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': f"Group '{group_name}' does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
         token, _ = Token.objects.get_or_create(user=user)
         
@@ -260,11 +302,11 @@ class ForgotPasswordView(APIView):
         ),
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description='Temporary password generated successfully and returned in the response.',
+                description='If user exists, an email with a temporary password will be sent.',
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'temporary_password': openapi.Schema(type=openapi.TYPE_STRING),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
                     },
                 ),
             ),
@@ -288,16 +330,21 @@ class ForgotPasswordView(APIView):
             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
         temporary_password = User.objects.make_random_password(length=10)
-        user.set_password(temporary_password)
-        user.save()
+        
+        reset_request, _ = PasswordResetRequest.objects.update_or_create(
+            user=user,
+            defaults={'temporary_password_hash': ''} 
+            # Placeholder empty string password, will be set in the next line to ensure hashing
+        )
+        reset_request.set_temporary_password(temporary_password)
+        reset_request.save()
 
         # Send email with the temporary password
-        # subject = 'Your New Temporary Password'
-        # message = f'Your temporary password is: {temporary_password}'
+        # subject = 'Your Temporary Password'
+        # message = f'Your temporary password is: {temporary_password}. It will expire in 15 minutes.'
         # from_email = settings.DEFAULT_FROM_EMAIL
         # recipient_list = [user.email]
-
-        # send_mail(subject, message, from_email, recipient_list)
+        # send_mail(subject, message, from_email, recipient_list, fail_silently=False)
 
         return Response(
             {'temporary_password': temporary_password},
