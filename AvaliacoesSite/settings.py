@@ -140,12 +140,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # LOGOUT_REDIRECT_URL = 'home-page' # Where to go after logout
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
-EMAIL_PORT = 587
+EMAIL_HOST = 'smtp.mailgun.org'
+EMAIL_PORT = 567
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = '9c7bd4001@smtp-brevo.com'
-EMAIL_HOST_PASSWORD = 'AH5Vyjt0SQG16Z7M'
-DEFAULT_FROM_EMAIL = 'avaliacoes_site@noreply.com'  
+EMAIL_HOST_USER = 'avaliacoes_site@sandboxf815bbbbe0684f748ebf59bc15f7a58f.mailgun.org'
+EMAIL_HOST_PASSWORD = '624c081e9a92ce2e9b09ec9d10f287b8-67edcffb-4a440bf4' # Not saved anywhere else
+DEFAULT_FROM_EMAIL = 'avaliacoes_site@gmail.com'  
 
 # Django REST Framework settings
 REST_FRAMEWORK = {

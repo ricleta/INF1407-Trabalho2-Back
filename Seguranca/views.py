@@ -229,7 +229,13 @@ class ForgotPasswordView(APIView):
         ),
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description='Temporary password generated successfully.',
+                description='Temporary password generated successfully and returned in the response.',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'temporary_password': openapi.Schema(type=openapi.TYPE_STRING),
+                    },
+                ),
             ),
             status.HTTP_400_BAD_REQUEST: 'Email not provided.',
             status.HTTP_404_NOT_FOUND: 'User with the given email not found.',
@@ -250,14 +256,14 @@ class ForgotPasswordView(APIView):
         user.save()
 
         # Send email with the temporary password
-        subject = 'Your New Temporary Password'
-        message = f'Your temporary password is: {temporary_password}'
-        from_email = settings.DEFAULT_FROM_EMAIL
-        recipient_list = [user.email]
+        # subject = 'Your New Temporary Password'
+        # message = f'Your temporary password is: {temporary_password}'
+        # from_email = settings.DEFAULT_FROM_EMAIL
+        # recipient_list = [user.email]
 
-        send_mail(subject, message, from_email, recipient_list)
+        # send_mail(subject, message, from_email, recipient_list)
 
         return Response(
-            {'message': 'A temporary password has been sent to your email address.'},
+            {'temporary_password': temporary_password},
             status=status.HTTP_200_OK
         )
