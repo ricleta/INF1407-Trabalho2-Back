@@ -144,7 +144,7 @@ EMAIL_HOST = 'smtp.mailgun.org'
 EMAIL_PORT = 567
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'avaliacoes_site@sandboxf815bbbbe0684f748ebf59bc15f7a58f.mailgun.org'
-EMAIL_HOST_PASSWORD = 'Password' # Not saved anywhere else
+EMAIL_HOST_PASSWORD = 'Password' # Not saved anywhere else for security reasons
 DEFAULT_FROM_EMAIL = 'avaliacoes_site@gmail.com'  
 
 # Django REST Framework settings
