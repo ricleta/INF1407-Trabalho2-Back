@@ -13,10 +13,16 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 class GamesView(APIView):
+    '''
+    View to handle CRUD operations for GamesModel.
+    '''
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def singleGame(self, id_arg):
+        '''
+        Helper method to get a single game by ID.
+        '''
         try:
             queryset = GamesModel.objects.get(id=id_arg)
             return queryset
@@ -31,6 +37,9 @@ class GamesView(APIView):
         }
     )
     def get(self, request, id_arg=None):
+        '''
+        Get all games or a specific game by ID.
+        '''
         if id_arg:
             # Get a single game by ID
             try:
@@ -54,6 +63,9 @@ class GamesView(APIView):
             400: "Bad Request"
         })
     def post(self, request):
+        '''
+        Create a new game.
+        '''
         serializer = GamesModelSerializer(data=request.data)
         if serializer.is_valid():
             # Assuming the developer is the authenticated user
@@ -72,6 +84,9 @@ class GamesView(APIView):
             404: "Not Found"
         })
     def put(self, request, id_arg):
+        '''
+        Update an existing game.
+        '''
         game = self.singleGame(id_arg)
         if not game:
             return Response({'error': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
@@ -90,6 +105,9 @@ class GamesView(APIView):
             404: "Not Found"
         })
     def delete(self, request, id_arg):
+        '''
+        Delete a game.
+        '''
         game = self.singleGame(id_arg)
         if game:
             game.delete()
@@ -113,6 +131,9 @@ class MyGamesView(APIView):
         }
     )
     def get(self, request):
+        '''
+        Get games created by the authenticated user.
+        '''
         queryset = GamesModel.objects.filter(developer=request.user)
         serializer = GamesModelSerializer(queryset, many=True)
         return Response(serializer.data)

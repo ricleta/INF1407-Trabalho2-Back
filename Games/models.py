@@ -13,8 +13,14 @@ class GamesModel(models.Model):
     developer = models.ForeignKey('auth.User', on_delete=models.CASCADE)
 
     def formatted_platforms(self):
+        '''
+        Returns a formatted string of platforms.
+        '''
         # The platforms are saved as a string representation of a list, e.g., "['PC', 'Xbox']"
         return self.platforms.replace("[", "").replace("]", "").replace("'", "")
 
     def __str__(self):
+        '''
+        String representation of the GamesModel instance.
+        '''
         return self.title

@@ -12,6 +12,9 @@ def create_user_groups(sender, **kwargs):
 
 
 class SegurancaConfig(AppConfig):
+    '''
+    Configuration for the Seguranca app.
+    '''
     default_auto_field = "django.db.models.BigAutoField"
     name = "Seguranca"
 

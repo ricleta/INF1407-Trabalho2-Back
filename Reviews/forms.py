@@ -14,6 +14,9 @@ class ReviewForm(forms.ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
+        '''
+        Custom initialization to accept the user parameter.
+        '''
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
@@ -23,6 +26,10 @@ class ReviewForm(forms.ModelForm):
             self.fields['game'].queryset = GamesModel.objects.filter(pk=self.instance.game.pk)
 
     class Meta:
+        '''
+        Meta class for ReviewForm.
+        Specifies the model, fields, labels, help texts, and custom error messages.
+        '''
         model = ReviewModel
         fields = ['game', 'rating', 'comment']
         labels = {
@@ -44,6 +51,7 @@ class ReviewForm(forms.ModelForm):
     def clean(self):
         """
         Custom validation to ensure a user doesn't review the same game twice.
+
         This check is only performed when creating a new review.
         """
         cleaned_data = super().clean()
@@ -57,7 +65,9 @@ class ReviewForm(forms.ModelForm):
         return cleaned_data
     
     def clean_rating(self):
-        """Custom validation to ensure rating is between 1 and 10."""
+        """
+        Custom validation to ensure rating is between 1 and 10.
+        """
         rating = self.cleaned_data.get('rating')
         
         print(f"########## Rating is {rating} ##############")
@@ -70,7 +80,9 @@ class ReviewForm(forms.ModelForm):
         return rating
 
     def clean_comment(self):
-        """Custom validation to ensure comment is valid."""
+        """
+        Custom validation to ensure comment is valid.
+        """
         comment = self.cleaned_data.get('comment')
         
         if not comment:
