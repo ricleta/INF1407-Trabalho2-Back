@@ -77,17 +77,8 @@ O backend foi desenvolvido exclusivamente como uma API, sem renderização de te
 * **Arquitetura REST:** A separação total das views em `APIView` e `ViewSets` retornando apenas JSON funcionou perfeitamente, permitindo que o frontend fosse completamente independente.
 * **Autenticação e Grupos:** A lógica de criar grupos (`developer`, `reviewer`) via *signals* pós-migração e verificar permissões nas Views garantiu a segurança dos endpoints.
 * **Swagger:** A integração com `drf_yasg` facilitou muito o teste dos endpoints sem precisar do frontend pronto.
-* **Recuperação de Senha: (Possivelmente alterar)** A configuração do envio de e-mail (SMTP Relay) para resgate de senha foi implementada com sucesso na `ForgotPasswordView`.
+* **Recuperação de Senha:** o usuário consegue alterar a prórpia senha quando logado e solicitar uma senha temporária caso tenha esquecido sua senha.
 
 ### O que não funcionou
-* **Mensagens de Erro: (Possivelmente alterar)** O DRF retorna erros de validação em formatos variados (às vezes lista, às vezes dicionário). Isso gerou dificuldade para padronizar o tratamento desses erros no frontend.
-* [cite_start]**CORS: (Possivelmente alterar)** Durante o desenvolvimento local, configurar o `django-cors-headers` corretamente para aceitar requisições do frontend rodando em portas diferentes exigiu ajustes nas configurações[cite: 29].
-
+* **Mensagens de Erro:** O DRF retorna erros de validação em formatos variados (às vezes lista, às vezes dicionário). Isso gerou dificuldade para padronizar o tratamento desses erros no frontend.
 ---
-
-## Critérios Atendidos (Backend)
-* [x] Desenvolvido em Django (sem templates HTML de usuário).
-* [x] CRUD completo (Banco de Dados).
-* [x] Publicado em provedor Web (PythonAnywhere).
-* [x] Endpoints protegidos (Token Auth).
-* [x] Documentação Swagger.
